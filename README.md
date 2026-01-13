@@ -1,2 +1,2 @@
 # Banking_doc_mgmt_system
-This is a prototype of a bank document management system. More information in the README...
+This is a console prototype of a document management banking system using C++.
