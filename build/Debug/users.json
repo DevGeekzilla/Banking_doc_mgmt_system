@@ -1,0 +1,24 @@
+{
+  "users": [
+    {
+      "username": "operator1",
+      "role": "operator",
+      "privateKey": "6328a4463bf5f7286a12a8c217c9e6c5"
+    },
+    {
+      "username": "manager1",
+      "role": "manager",
+      "privateKey": "7600c042f36f385a017ae637113970ad"
+    },
+    {
+      "username": "chief1",
+      "role": "chief",
+      "privateKey": "d92b72e66b374e9dd7a09e58bc8a1fc5"
+    },
+    {
+      "username": "security_admin1",
+      "role": "security_admin",
+      "privateKey": "9d167953ea416d149e45b7675d8caf17"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+[2026-01-14 01:17:08] User: danil | Access Attempt: LOGIN | Result: DENIED
+[2026-01-14 01:17:31] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:22:06] User: operator1 | Action: CREATE | Document ID: 1 | Details: credit_application
+[2026-01-14 01:22:10] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 01:22:19] User: operator1 | Action: VIEW | Document ID: 1
+[2026-01-14 01:23:04] User: manager1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:23:45] User: chief1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:23:54] User: chief1 | Action: LOGOUT
+[2026-01-14 01:24:09] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:24:11] User: operator1 | Action: LOGOUT
+[2026-01-14 01:24:18] User: manager1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:24:20] User: manager1 | Action: LOGOUT
+[2026-01-14 01:24:38] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:24:50] User: security_admin1 | Action: VIEW_AUDIT_LOG
+[2026-01-14 01:25:22] User: security_admin1 | Action: LOGOUT
+[2026-01-14 01:25:29] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:25:37] User: operator1 | Action: LOGOUT
+[2026-01-14 01:26:00] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:26:04] User: operator1 | Action: LOGOUT
+[2026-01-14 01:26:32] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:26:37] User: security_admin1 | Action: VIEW_AUDIT_LOG
+[2026-01-14 01:26:41] User: security_admin1 | Action: LOGOUT
+[2026-01-14 01:27:22] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:27:38] User: security_admin1 | Action: CREATE | Document ID: 1 | Details: credit_application
+[2026-01-14 01:27:40] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 01:27:48] User: security_admin1 | Action: VIEW | Document ID: 1
+[2026-01-14 01:28:03] User: security_admin1 | Action: LOGOUT
+[2026-01-14 01:28:11] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:28:14] User: operator1 | Action: LOGOUT
+[2026-01-14 01:28:25] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:28:37] User: security_admin1 | Action: CREATE | Document ID: 1 | Details: credit_application
+[2026-01-14 01:28:43] User: security_admin1 | Action: SIGN | Document ID: 1
+[2026-01-14 01:28:47] User: security_admin1 | Action: APPROVE | Document ID: 1
+[2026-01-14 01:28:54] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 01:28:58] User: security_admin1 | Action: VIEW | Document ID: 1
+[2026-01-14 01:29:06] User: security_admin1 | Action: VIEW_AUDIT_LOG
+[2026-01-14 01:29:09] User: security_admin1 | Action: LOGOUT
+[2026-01-14 01:29:14] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:29:17] User: operator1 | Action: LOGOUT
+[2026-01-14 01:29:29] User: chief1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:29:39] User: chief1 | Action: CREATE | Document ID: 1 | Details: internal_order
+[2026-01-14 01:29:44] User: chief1 | Action: SIGN | Document ID: 1
+[2026-01-14 01:29:51] User: chief1 | Action: APPROVE | Document ID: 1
+[2026-01-14 01:30:04] User: chief1 | Action: LOGOUT
+[2026-01-14 01:30:21] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:30:33] User: security_admin1 | Action: LOGOUT
+[2026-01-14 01:30:49] User: chief1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:30:56] User: chief1 | Action: CREATE | Document ID: 1 | Details: internal_order
+[2026-01-14 01:30:59] User: chief1 | Action: SIGN | Document ID: 1
+[2026-01-14 01:31:02] User: chief1 | Action: APPROVE | Document ID: 1
+[2026-01-14 01:31:05] User: chief1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 01:31:08] User: chief1 | Action: LOGOUT
+[2026-01-14 01:31:19] User: chief1 | Action: LOGIN | Details: Successful login
+[2026-01-14 01:31:28] User: chief1 | Action: LOGOUT

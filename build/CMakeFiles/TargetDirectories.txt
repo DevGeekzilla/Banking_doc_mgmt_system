@@ -1,0 +1,3 @@
+C:/study/Banking_doc_mgmt_system/build/CMakeFiles/BankingDocMgmtSystem.dir
+C:/study/Banking_doc_mgmt_system/build/CMakeFiles/ALL_BUILD.dir
+C:/study/Banking_doc_mgmt_system/build/CMakeFiles/ZERO_CHECK.dir
