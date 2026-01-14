@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <cstring>
+#include <iomanip>
+#include <ctime>
+#include <cctype>
 
 Menu::Menu() : currentUser(nullptr), nextDocumentId(1) {
     initializeUsers();
@@ -48,23 +50,43 @@ void Menu::loadUsers() {
         return; // Файл не существует, используем фиксированные ключи
     }
     
+    // Проверяем, что файл не пустой
+    file.seekg(0, std::ios::end);
+    if (file.tellg() < static_cast<std::streampos>(sizeof(size_t))) {
+        file.close();
+        return;
+    }
+    file.seekg(0, std::ios::beg);
+    
     // Читаем количество пользователей
     size_t count;
     file.read(reinterpret_cast<char*>(&count), sizeof(count));
     
+    // Валидация количества
+    if (count > 100) {
+        file.close();
+        return;
+    }
+    
     // Читаем каждого пользователя
     for (size_t i = 0; i < count && i < users.size(); ++i) {
+        if (file.eof() || file.fail()) break;
+        
         // Читаем username
         size_t usernameLen;
         file.read(reinterpret_cast<char*>(&usernameLen), sizeof(usernameLen));
+        if (file.fail() || usernameLen > 100) break;
         std::string username(usernameLen, '\0');
         file.read(&username[0], usernameLen);
+        if (file.fail()) break;
         
         // Читаем privateKey
         size_t keyLen;
         file.read(reinterpret_cast<char*>(&keyLen), sizeof(keyLen));
+        if (file.fail() || keyLen > 200) break; // Валидация длины ключа
         std::string key(keyLen, '\0');
         file.read(&key[0], keyLen);
+        if (file.fail()) break;
         
         // Находим пользователя и устанавливаем ключ
         for (auto& user : users) {
@@ -109,59 +131,99 @@ void Menu::saveUsers() {
 void Menu::loadDocuments() {
     std::ifstream file("documents.bin", std::ios::binary);
     if (!file.is_open()) {
+        return; // Файл не существует - это нормально при первом запуске
+    }
+    
+    // Проверяем, что файл не пустой
+    file.seekg(0, std::ios::end);
+    if (file.tellg() < static_cast<std::streampos>(sizeof(size_t))) {
+        file.close();
         return;
     }
+    file.seekg(0, std::ios::beg);
     
     // Читаем количество документов
     size_t count;
     file.read(reinterpret_cast<char*>(&count), sizeof(count));
     
+    // Валидация количества документов
+    if (count > 10000) { // Разумный лимит
+        file.close();
+        return;
+    }
+    
     int maxId = 0;
+    size_t loadedCount = 0;
     
     // Читаем каждый документ
     for (size_t i = 0; i < count; ++i) {
+        // Проверяем, что файл не закончился
+        if (file.eof() || file.fail()) {
+            break;
+        }
+        
         // Читаем id
         int id;
         file.read(reinterpret_cast<char*>(&id), sizeof(id));
+        if (file.fail()) break;
         if (id > maxId) maxId = id;
         
         // Читаем type
         int typeInt;
         file.read(reinterpret_cast<char*>(&typeInt), sizeof(typeInt));
+        if (file.fail()) break;
+        if (typeInt < 0 || typeInt > 2) break; // Валидация типа
         DocumentType type = static_cast<DocumentType>(typeInt);
         
         // Читаем content
         size_t contentLen;
         file.read(reinterpret_cast<char*>(&contentLen), sizeof(contentLen));
+        if (file.fail() || contentLen > 100000) break; // Валидация длины
         std::string content(contentLen, '\0');
         file.read(&content[0], contentLen);
+        if (file.fail()) break;
         
         // Читаем creator
         size_t creatorLen;
         file.read(reinterpret_cast<char*>(&creatorLen), sizeof(creatorLen));
+        if (file.fail() || creatorLen > 100) break; // Валидация длины
         std::string creator(creatorLen, '\0');
         file.read(&creator[0], creatorLen);
+        if (file.fail()) break;
         
         // Читаем status
         int statusInt;
         file.read(reinterpret_cast<char*>(&statusInt), sizeof(statusInt));
+        if (file.fail()) break;
+        if (statusInt < 0 || statusInt > 3) break; // Валидация статуса
         DocumentStatus status = static_cast<DocumentStatus>(statusInt);
         
         // Читаем hash
         size_t hashLen;
         file.read(reinterpret_cast<char*>(&hashLen), sizeof(hashLen));
-        std::string hash(hashLen, '\0');
-        file.read(&hash[0], hashLen);
+        if (file.fail()) break;
+        std::string hash;
+        if (hashLen > 0 && hashLen < 1000) { // Валидация длины хеша
+            hash.resize(hashLen);
+            file.read(&hash[0], hashLen);
+            if (file.fail()) break;
+        }
         
         // Читаем signature
         size_t signatureLen;
         file.read(reinterpret_cast<char*>(&signatureLen), sizeof(signatureLen));
+        if (file.fail()) break;
+        if (signatureLen > 10000) break; // Валидация длины
         std::string signature(signatureLen, '\0');
-        file.read(&signature[0], signatureLen);
+        if (signatureLen > 0) {
+            file.read(&signature[0], signatureLen);
+            if (file.fail()) break;
+        }
         
         // Читаем timestamp
         std::time_t timestamp;
         file.read(reinterpret_cast<char*>(&timestamp), sizeof(timestamp));
+        if (file.fail()) break;
         
         // Создаем документ
         Document doc(id, type, content, creator);
@@ -171,6 +233,7 @@ void Menu::loadDocuments() {
         doc.setTimestamp(timestamp);
         
         documents.push_back(doc);
+        loadedCount++;
     }
     
     file.close();
@@ -178,6 +241,11 @@ void Menu::loadDocuments() {
     // Обновляем nextDocumentId
     if (maxId > 0) {
         nextDocumentId = maxId + 1;
+    }
+    
+    if (loadedCount < count) {
+        // Некоторые документы не загрузились - сохраняем то, что загрузилось
+        saveDocuments();
     }
 }
 
@@ -240,7 +308,9 @@ void Menu::saveDocuments() {
 User* Menu::authenticate() {
     std::string username, password;
     
-    std::cout << "\n=== Аутентификация ===\n";
+    std::cout << "\n========================================\n";
+    std::cout << "         АУТЕНТИФИКАЦИЯ\n";
+    std::cout << "========================================\n";
     std::cout << "Имя пользователя: ";
     std::cin >> username;
     std::cout << "Пароль: ";
@@ -254,7 +324,7 @@ User* Menu::authenticate() {
     }
     
     Audit::logAccessAttempt(username, "LOGIN", false);
-    std::cout << "Ошибка: Неверное имя пользователя или пароль.\n";
+    std::cout << "\n[ОШИБКА] Неверное имя пользователя или пароль.\n";
     return nullptr;
 }
 
@@ -301,6 +371,30 @@ User* Menu::findUser(const std::string& username) {
     return nullptr;
 }
 
+std::string Menu::stringToHex(const std::string& str) {
+    std::stringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0');
+    for (unsigned char c : str) {
+        ss << std::setw(2) << static_cast<int>(c);
+    }
+    return ss.str();
+}
+
+void Menu::formatTimestamp(std::time_t timestamp, std::string& output) {
+    std::tm timeinfo;
+#ifdef _WIN32
+    // Используем безопасную версию для Windows
+    localtime_s(&timeinfo, &timestamp);
+    std::tm* timeinfo_ptr = &timeinfo;
+#else
+    // Для других платформ используем стандартную функцию
+    std::tm* timeinfo_ptr = std::localtime(&timestamp);
+#endif
+    char buffer[80];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo_ptr);
+    output = buffer;
+}
+
 DocumentType Menu::selectDocumentType() {
     int choice;
     std::cout << "\nВыберите тип документа:\n";
@@ -318,19 +412,76 @@ DocumentType Menu::selectDocumentType() {
     }
 }
 
+std::string Menu::createDocumentForm(DocumentType type) {
+    std::string content;
+    std::cin.ignore();
+    
+    // Приоритет 4: Интерактивные формы для документов
+    switch (type) {
+        case DocumentType::CREDIT_APPLICATION: {
+            std::cout << "\n=== Форма кредитной заявки ===\n";
+            std::string sum, term, purpose;
+            std::cout << "Сумма кредита: ";
+            std::getline(std::cin, sum);
+            std::cout << "Срок кредита: ";
+            std::getline(std::cin, term);
+            std::cout << "Назначение кредита: ";
+            std::getline(std::cin, purpose);
+            content = "Сумма: " + sum + " | Срок: " + term + " | Назначение: " + purpose;
+            break;
+        }
+        case DocumentType::CREDIT_CONTRACT: {
+            std::cout << "\n=== Форма кредитного договора ===\n";
+            std::string party1, party2, sum, conditions;
+            std::cout << "Сторона 1 (кредитор): ";
+            std::getline(std::cin, party1);
+            std::cout << "Сторона 2 (заемщик): ";
+            std::getline(std::cin, party2);
+            std::cout << "Сумма договора: ";
+            std::getline(std::cin, sum);
+            std::cout << "Условия договора: ";
+            std::getline(std::cin, conditions);
+            content = "Сторона 1: " + party1 + " | Сторона 2: " + party2 + 
+                     " | Сумма: " + sum + " | Условия: " + conditions;
+            break;
+        }
+        case DocumentType::INTERNAL_ORDER: {
+            std::cout << "\n=== Форма внутреннего приказа ===\n";
+            std::string number, date, content_text, signer;
+            std::cout << "Номер приказа: ";
+            std::getline(std::cin, number);
+            std::cout << "Дата приказа: ";
+            std::getline(std::cin, date);
+            std::cout << "Содержание приказа: ";
+            std::getline(std::cin, content_text);
+            std::cout << "Подписант: ";
+            std::getline(std::cin, signer);
+            content = "Номер: " + number + " | Дата: " + date + 
+                     " | Содержание: " + content_text + " | Подписант: " + signer;
+            break;
+        }
+    }
+    
+    return content;
+}
+
 void Menu::createDocument() {
     if (!hasPermission("create")) {
-        std::cout << "Ошибка: У вас нет прав на создание документов.\n";
+        std::cout << "\n[ОШИБКА] У вас нет прав на создание документов.\n";
         Audit::logAccessAttempt(currentUser->getUsername(), "CREATE_DOCUMENT", false);
         return;
     }
     
     DocumentType type = selectDocumentType();
     
-    std::string content;
-    std::cout << "\nВведите содержимое документа: ";
-    std::cin.ignore();
-    std::getline(std::cin, content);
+    // Используем интерактивную форму
+    std::string content = createDocumentForm(type);
+    
+    // Валидация содержимого
+    if (content.empty()) {
+        std::cout << "\n[ОШИБКА] Содержимое документа не может быть пустым.\n";
+        return;
+    }
     
     Document doc(nextDocumentId++, type, content, currentUser->getUsername());
     
@@ -344,26 +495,47 @@ void Menu::createDocument() {
     
     documents.push_back(doc);
     
-    Audit::logDocumentAction(currentUser->getUsername(), "CREATE", doc.getId(), 
-                            Document::typeToString(type));
+    // Приоритет 2: Расширить аудит документов - детализация создания
+    std::string details = "Type: " + Document::typeToString(type) + 
+                         " | Size: " + std::to_string(content.length()) + " bytes" +
+                         " | Hash: " + hash.substr(0, 8) + "...";
+    Audit::logDocumentAction(currentUser->getUsername(), "CREATE", doc.getId(), details);
     
-    std::cout << "Документ создан с ID: " << doc.getId() << "\n";
+    std::cout << "\n[УСПЕХ] Документ успешно создан!\n";
+    std::cout << "ID документа: " << doc.getId() << "\n";
+    std::cout << "Тип: " << Document::typeToString(type) << "\n";
+    std::cout << "Размер: " << content.length() << " байт\n";
+    std::cout << "Хеш: " << hash << "\n";
+    
     saveDocuments();
 }
 
 void Menu::viewDocuments() {
-    std::cout << "\n=== Список документов ===\n";
+    std::cout << "\n========================================\n";
+    std::cout << "     СПИСОК ДОКУМЕНТОВ\n";
+    std::cout << "========================================\n";
+    
     if (documents.empty()) {
-        std::cout << "Документов нет.\n";
+        std::cout << "Документов в системе нет.\n";
+        std::cout << "========================================\n";
         return;
     }
     
+    std::cout << "Всего документов: " << documents.size() << "\n\n";
+    std::cout << std::left << std::setw(6) << "ID" 
+              << std::setw(20) << "Тип" 
+              << std::setw(15) << "Создатель" 
+              << std::setw(12) << "Статус" << "\n";
+    std::cout << std::string(60, '-') << "\n";
+    
     for (const auto& doc : documents) {
-        std::cout << "ID: " << doc.getId() 
-                  << " | Тип: " << Document::typeToString(doc.getType())
-                  << " | Создатель: " << doc.getCreator()
-                  << " | Статус: " << Document::statusToString(doc.getStatus()) << "\n";
+        std::cout << std::left << std::setw(6) << doc.getId()
+                  << std::setw(20) << Document::typeToString(doc.getType())
+                  << std::setw(15) << doc.getCreator()
+                  << std::setw(12) << Document::statusToString(doc.getStatus()) << "\n";
     }
+    
+    std::cout << "========================================\n";
     
     Audit::log(currentUser->getUsername(), "VIEW_DOCUMENTS_LIST");
 }
@@ -371,119 +543,281 @@ void Menu::viewDocuments() {
 void Menu::viewDocument(int id) {
     Document* doc = findDocument(id);
     if (!doc) {
-        std::cout << "Документ с ID " << id << " не найден.\n";
+        std::cout << "\n[ОШИБКА] Документ с ID " << id << " не найден.\n";
         return;
     }
     
-    std::cout << "\n=== Документ ID: " << id << " ===\n";
-    std::cout << "Тип: " << Document::typeToString(doc->getType()) << "\n";
+    std::cout << "\n========================================\n";
+    std::cout << "     ДОКУМЕНТ ID: " << id << "\n";
+    std::cout << "========================================\n";
+    std::cout << "Тип документа: " << Document::typeToString(doc->getType()) << "\n";
     std::cout << "Создатель: " << doc->getCreator() << "\n";
     std::cout << "Статус: " << Document::statusToString(doc->getStatus()) << "\n";
-    std::cout << "Хеш: " << doc->getHash() << "\n";
+    
+    // Форматируем дату создания
+    std::string dateStr;
+    formatTimestamp(doc->getTimestamp(), dateStr);
+    std::cout << "Дата создания: " << dateStr << "\n";
+    
+    // Отображаем хеш (если пустой, вычисляем заново)
+    std::string hash = doc->getHash();
+    if (hash.empty()) {
+        std::cout << "Хеш: [не вычислен]\n";
+    } else {
+        // Проверяем, что хеш не содержит непечатаемые символы
+        std::string displayHash;
+        for (char c : hash) {
+            if (std::isprint(static_cast<unsigned char>(c)) || c == '\0') {
+                displayHash += c;
+            } else {
+                displayHash += '?';
+            }
+        }
+        std::cout << "Хеш: " << displayHash << " (длина: " << hash.length() << ")\n";
+    }
+    
     std::cout << "Подпись: " << (doc->getSignature().empty() ? "нет" : "есть") << "\n";
+    
+    // Показываем зашифрованное содержимое в hex формате
+    std::string encryptedHex = stringToHex(doc->getContent());
+    std::cout << "\n--- Зашифрованное содержимое (HEX) ---\n";
+    // Показываем первые 64 символа hex, если длиннее
+    if (encryptedHex.length() > 64) {
+        std::cout << encryptedHex.substr(0, 64) << "... (показано 32 байта из " 
+                  << (doc->getContent().length()) << ")\n";
+    } else {
+        std::cout << encryptedHex << "\n";
+    }
     
     // Расшифровываем содержимое (используем ключ создателя)
     User* creator = findUser(doc->getCreator());
+    bool decryptSuccess = false;
     if (creator) {
-        std::string decrypted = CryptoModule::decrypt(doc->getContent(), creator->getPrivateKey());
-        std::cout << "Содержимое (расшифровано): " << decrypted << "\n";
+        try {
+            std::string decrypted = CryptoModule::decrypt(doc->getContent(), creator->getPrivateKey());
+            std::cout << "\n--- Расшифрованное содержимое ---\n";
+            std::cout << decrypted;
+            if (!decrypted.empty() && decrypted.back() != '\n') {
+                std::cout << "\n";
+            }
+            
+            // Приоритет 1: Проверка целостности при просмотре
+            std::string computedHash = CryptoModule::computeHash(decrypted);
+            
+            // Если хеш был пустым, сохраняем вычисленный
+            if (hash.empty()) {
+                doc->setHash(computedHash);
+                hash = computedHash; // Обновляем локальную переменную
+                saveDocuments();
+                std::cout << "\n[ИНФО] Хеш пересчитан и сохранен: " << hash << "\n";
+            }
+            
+            std::cout << "\n--- Проверка целостности ---\n";
+            // Форматируем хеши для вывода (убираем непечатаемые символы)
+            std::string displayStoredHash;
+            for (char c : hash) {
+                if (std::isprint(static_cast<unsigned char>(c))) {
+                    displayStoredHash += c;
+                } else {
+                    displayStoredHash += '?';
+                }
+            }
+            std::string displayComputedHash;
+            for (char c : computedHash) {
+                if (std::isprint(static_cast<unsigned char>(c))) {
+                    displayComputedHash += c;
+                } else {
+                    displayComputedHash += '?';
+                }
+            }
+            std::cout << "Сохраненный хеш: " << (displayStoredHash.empty() ? "[пусто]" : displayStoredHash) 
+                      << " (длина: " << hash.length() << ")\n";
+            std::cout << "Вычисленный хеш: " << (displayComputedHash.empty() ? "[пусто]" : displayComputedHash) 
+                      << " (длина: " << computedHash.length() << ")\n";
+            if (computedHash == hash) {
+                std::cout << "[OK] Целостность подтверждена\n";
+            } else {
+                std::cout << "[ERROR] Целостность нарушена!\n";
+            }
+            
+            decryptSuccess = true;
+            std::string hashStatus = (computedHash == doc->getHash() ? "OK" : "FAILED");
+            Audit::logDocumentAction(currentUser->getUsername(), "DECRYPT_SUCCESS", id, 
+                                    "Hash check: " + hashStatus);
+        } catch (const std::exception& e) {
+            std::cout << "\n[ERROR] Ошибка расшифровки: " << e.what() << "\n";
+            Audit::logDocumentAction(currentUser->getUsername(), "DECRYPT_FAILED", id, 
+                                    "Decryption error: " + std::string(e.what()));
+        } catch (...) {
+            std::cout << "\n[ERROR] Неизвестная ошибка при расшифровке\n";
+            Audit::logDocumentAction(currentUser->getUsername(), "DECRYPT_FAILED", id, "Decryption error");
+        }
     } else {
-        std::cout << "Содержимое: [зашифровано, создатель не найден]\n";
+        std::cout << "\n[ERROR] Создатель документа не найден в системе\n";
+        Audit::logDocumentAction(currentUser->getUsername(), "DECRYPT_FAILED", id, "Creator not found");
     }
+    
+    std::cout << "========================================\n";
     
     Audit::logDocumentAction(currentUser->getUsername(), "VIEW", id);
 }
 
 void Menu::signDocument(int id) {
     if (!hasPermission("sign")) {
-        std::cout << "Ошибка: У вас нет прав на подписание документов.\n";
+        std::cout << "\n[ОШИБКА] У вас нет прав на подписание документов.\n";
         Audit::logAccessAttempt(currentUser->getUsername(), "SIGN_DOCUMENT", false);
         return;
     }
     
     Document* doc = findDocument(id);
     if (!doc) {
-        std::cout << "Документ с ID " << id << " не найден.\n";
+        std::cout << "\n[ОШИБКА] Документ с ID " << id << " не найден.\n";
         return;
     }
     
     if (doc->getStatus() != DocumentStatus::DRAFT) {
-        std::cout << "Ошибка: Документ уже подписан или утвержден.\n";
+        std::cout << "\n[ОШИБКА] Документ уже подписан или утвержден.\n";
+        std::cout << "Текущий статус: " << Document::statusToString(doc->getStatus()) << "\n";
         return;
     }
     
     // Расшифровываем для подписания (используем ключ создателя документа)
     User* creator = findUser(doc->getCreator());
     if (!creator) {
-        std::cout << "Ошибка: Создатель документа не найден.\n";
+        std::cout << "\n[ОШИБКА] Создатель документа не найден в системе.\n";
         return;
     }
     std::string decrypted = CryptoModule::decrypt(doc->getContent(), creator->getPrivateKey());
+    
+    // Приоритет 5: Проверка целостности при подписании
+    std::string computedHash = CryptoModule::computeHash(decrypted);
+    std::string storedHash = doc->getHash();
+    
+    // Если хеш пустой, используем вычисленный
+    if (storedHash.empty()) {
+        doc->setHash(computedHash);
+        storedHash = computedHash;
+        std::cout << "[ИНФО] Хеш документа пересчитан.\n";
+    }
+    
+    std::cout << "\n--- Проверка целостности перед подписанием ---\n";
+    std::cout << "Сохраненный хеш: " << storedHash << "\n";
+    std::cout << "Вычисленный хеш: " << computedHash << "\n";
+    
+    if (computedHash != storedHash) {
+        std::cout << "\n[ОШИБКА] Целостность документа нарушена!\n";
+        std::cout << "Подпись не может быть поставлена.\n";
+        Audit::logDocumentAction(currentUser->getUsername(), "SIGN_FAILED", id, 
+                                "Integrity check failed: hash mismatch");
+        return;
+    }
+    
+    std::cout << "[OK] Целостность подтверждена, подписание разрешено.\n";
     
     // Создаем подпись ключом создателя (для прототипа - создатель подписывает свой документ)
     std::string signature = CryptoModule::createSignature(decrypted, creator->getPrivateKey());
     doc->setSignature(signature);
     doc->setStatus(DocumentStatus::SIGNED);
     
-    Audit::logDocumentAction(currentUser->getUsername(), "SIGN", id);
-    std::cout << "Документ подписан.\n";
+    Audit::logDocumentAction(currentUser->getUsername(), "SIGN", id, 
+                            "Hash verified: " + computedHash.substr(0, 8) + "...");
+    std::cout << "\n[УСПЕХ] Документ успешно подписан.\n";
+    std::cout << "Статус изменен на: " << Document::statusToString(DocumentStatus::SIGNED) << "\n";
     saveDocuments();
 }
 
 void Menu::approveDocument(int id) {
     if (!hasPermission("approve")) {
-        std::cout << "Ошибка: У вас нет прав на утверждение документов.\n";
+        std::cout << "\n[ОШИБКА] У вас нет прав на утверждение документов.\n";
         Audit::logAccessAttempt(currentUser->getUsername(), "APPROVE_DOCUMENT", false);
         return;
     }
     
     Document* doc = findDocument(id);
     if (!doc) {
-        std::cout << "Документ с ID " << id << " не найден.\n";
+        std::cout << "\n[ОШИБКА] Документ с ID " << id << " не найден.\n";
         return;
     }
     
     if (doc->getStatus() != DocumentStatus::SIGNED) {
-        std::cout << "Ошибка: Документ должен быть сначала подписан.\n";
+        std::cout << "\n[ОШИБКА] Документ должен быть сначала подписан.\n";
+        std::cout << "Текущий статус: " << Document::statusToString(doc->getStatus()) << "\n";
         return;
     }
     
     // Проверяем подпись
     User* creator = findUser(doc->getCreator());
     if (!creator) {
-        std::cout << "Ошибка: Создатель документа не найден.\n";
+        std::cout << "\n[ОШИБКА] Создатель документа не найден в системе.\n";
         return;
     }
+    
     std::string decrypted = CryptoModule::decrypt(doc->getContent(), creator->getPrivateKey());
     
-    if (creator && !CryptoModule::verifySignature(decrypted, doc->getSignature(), creator->getPrivateKey())) {
-        std::cout << "Предупреждение: Подпись не прошла проверку.\n";
+    // Проверяем целостность перед утверждением
+    std::string computedHash = CryptoModule::computeHash(decrypted);
+    std::string storedHash = doc->getHash();
+    if (storedHash.empty()) {
+        doc->setHash(computedHash);
+        storedHash = computedHash;
+    }
+    
+    bool integrityOK = (computedHash == storedHash);
+    bool signatureOK = CryptoModule::verifySignature(decrypted, doc->getSignature(), creator->getPrivateKey());
+    
+    std::cout << "\n--- Проверка перед утверждением ---\n";
+    std::cout << "Целостность: " << (integrityOK ? "[OK]" : "[ERROR]") << "\n";
+    std::cout << "Подпись: " << (signatureOK ? "[OK]" : "[ERROR]") << "\n";
+    
+    if (!signatureOK) {
+        std::cout << "\n[ПРЕДУПРЕЖДЕНИЕ] Подпись не прошла проверку, но документ будет утвержден.\n";
+        Audit::logDocumentAction(currentUser->getUsername(), "APPROVE_WARNING", id, 
+                                "Signature verification failed");
+    }
+    
+    if (!integrityOK) {
+        std::cout << "\n[ОШИБКА] Целостность документа нарушена! Утверждение отменено.\n";
+        Audit::logDocumentAction(currentUser->getUsername(), "APPROVE_FAILED", id, 
+                                "Integrity check failed");
+        return;
     }
     
     doc->setStatus(DocumentStatus::APPROVED);
     
-    Audit::logDocumentAction(currentUser->getUsername(), "APPROVE", id);
-    std::cout << "Документ утвержден.\n";
+    std::string sigStatus = (signatureOK ? "OK" : "FAILED");
+    Audit::logDocumentAction(currentUser->getUsername(), "APPROVE", id, 
+                            "Integrity: OK, Signature: " + sigStatus);
+    std::cout << "\n[УСПЕХ] Документ успешно утвержден.\n";
+    std::cout << "Статус изменен на: " << Document::statusToString(DocumentStatus::APPROVED) << "\n";
     saveDocuments();
 }
 
 void Menu::rejectDocument(int id) {
     if (!hasPermission("reject")) {
-        std::cout << "Ошибка: У вас нет прав на отклонение документов.\n";
+        std::cout << "\n[ОШИБКА] У вас нет прав на отклонение документов.\n";
         Audit::logAccessAttempt(currentUser->getUsername(), "REJECT_DOCUMENT", false);
         return;
     }
     
     Document* doc = findDocument(id);
     if (!doc) {
-        std::cout << "Документ с ID " << id << " не найден.\n";
+        std::cout << "\n[ОШИБКА] Документ с ID " << id << " не найден.\n";
         return;
     }
     
+    if (doc->getStatus() == DocumentStatus::REJECTED) {
+        std::cout << "\n[ИНФО] Документ уже отклонен.\n";
+        return;
+    }
+    
+    std::string oldStatus = Document::statusToString(doc->getStatus());
     doc->setStatus(DocumentStatus::REJECTED);
     
-    Audit::logDocumentAction(currentUser->getUsername(), "REJECT", id);
-    std::cout << "Документ отклонен.\n";
+    Audit::logDocumentAction(currentUser->getUsername(), "REJECT", id, 
+                            "Previous status: " + oldStatus);
+    std::cout << "\n[УСПЕХ] Документ отклонен.\n";
+    std::cout << "Предыдущий статус: " << oldStatus << "\n";
+    std::cout << "Новый статус: " << Document::statusToString(DocumentStatus::REJECTED) << "\n";
     saveDocuments();
 }
 
@@ -705,16 +1039,21 @@ void Menu::showSecurityAdminMenu() {
 }
 
 void Menu::run() {
-    std::cout << "=== Система защищенного электронного документооборота ===\n";
+    std::cout << "\n";
+    std::cout << "========================================\n";
+    std::cout << "  СИСТЕМА ЗАЩИЩЕННОГО ЭЛЕКТРОННОГО\n";
+    std::cout << "      ДОКУМЕНТООБОРОТА (ЗЭДКД)\n";
+    std::cout << "========================================\n";
     
     currentUser = authenticate();
     if (!currentUser) {
-        std::cout << "Ошибка аутентификации. Выход.\n";
+        std::cout << "\n[ОШИБКА] Аутентификация не удалась. Выход из системы.\n";
         return;
     }
     
-    std::cout << "\nДобро пожаловать, " << currentUser->getUsername() 
-              << " (" << User::roleToString(currentUser->getRole()) << ")\n";
+    std::cout << "\n[УСПЕХ] Добро пожаловать, " << currentUser->getUsername() << "!\n";
+    std::cout << "Роль: " << User::roleToString(currentUser->getRole()) << "\n";
+    std::cout << "========================================\n";
     
     switch (currentUser->getRole()) {
         case UserRole::OPERATOR:

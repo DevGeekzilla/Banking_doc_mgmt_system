@@ -44,9 +44,12 @@ private:
     
     // Вспомогательные функции
     DocumentType selectDocumentType();
+    std::string createDocumentForm(DocumentType type);
     bool hasPermission(const std::string& action);
     Document* findDocument(int id);
     User* findUser(const std::string& username);
+    std::string stringToHex(const std::string& str);
+    void formatTimestamp(std::time_t timestamp, std::string& output);
     
 public:
     Menu();

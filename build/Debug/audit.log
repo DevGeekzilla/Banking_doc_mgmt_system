@@ -157,3 +157,52 @@
 [2026-01-14 05:33:39] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
 [2026-01-14 05:33:44] User: security_admin1 | Action: VIEW | Document ID: 1
 [2026-01-14 05:34:56] User: security_admin1 | Action: VIEW_AUDIT_LOG
+[2026-01-14 05:42:26] User: security_admin1 | Action: LOGOUT
+[2026-01-14 06:01:41] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:01:42] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:01:47] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 1 | Details: Hash check: OK
+[2026-01-14 06:01:47] User: operator1 | Action: VIEW | Document ID: 1
+[2026-01-14 06:02:58] User: operator1 | Action: CREATE | Document ID: 2 | Details: Type: credit_application | Size: 82 bytes
+[2026-01-14 06:03:01] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:03:04] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 2 | Details: Hash check: OK
+[2026-01-14 06:03:04] User: operator1 | Action: VIEW | Document ID: 2
+[2026-01-14 06:15:14] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:15:20] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:15:29] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 1 | Details: Hash check: OK
+[2026-01-14 06:15:29] User: operator1 | Action: VIEW | Document ID: 1
+[2026-01-14 06:15:51] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 2 | Details: Hash check: OK
+[2026-01-14 06:15:51] User: operator1 | Action: VIEW | Document ID: 2
+[2026-01-14 06:16:34] User: operator1 | Action: CREATE | Document ID: 3 | Details: Type: credit_application | Size: 71 bytes | Hash:  Ñ³ ì ì...
+[2026-01-14 06:16:44] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 3 | Details: Hash check: OK
+[2026-01-14 06:16:44] User: operator1 | Action: VIEW | Document ID: 3
+[2026-01-14 06:21:17] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:21:20] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:21:27] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 1 | Details: Hash check: FAILED
+[2026-01-14 06:21:27] User: operator1 | Action: VIEW | Document ID: 1
+[2026-01-14 06:21:49] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 2 | Details: Hash check: FAILED
+[2026-01-14 06:21:49] User: operator1 | Action: VIEW | Document ID: 2
+[2026-01-14 06:21:58] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 3 | Details: Hash check: FAILED
+[2026-01-14 06:21:58] User: operator1 | Action: VIEW | Document ID: 3
+[2026-01-14 06:22:46] User: operator1 | Action: CREATE | Document ID: 4 | Details: Type: internal_order | Size: 115 bytes | Hash: 0D0E0C05...
+[2026-01-14 06:22:55] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:22:59] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 4 | Details: Hash check: OK
+[2026-01-14 06:22:59] User: operator1 | Action: VIEW | Document ID: 4
+[2026-01-14 06:23:53] User: operator1 | Action: CREATE | Document ID: 5 | Details: Type: credit_contract | Size: 103 bytes | Hash: 01120E10...
+[2026-01-14 06:23:57] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:24:00] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 5 | Details: Hash check: OK
+[2026-01-14 06:24:00] User: operator1 | Action: VIEW | Document ID: 5
+[2026-01-14 06:24:34] User: operator1 | Action: CREATE | Document ID: 6 | Details: Type: credit_application | Size: 65 bytes | Hash: 01130C0C...
+[2026-01-14 06:24:38] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:24:42] User: operator1 | Action: DECRYPT_SUCCESS | Document ID: 6 | Details: Hash check: OK
+[2026-01-14 06:24:42] User: operator1 | Action: VIEW | Document ID: 6
+[2026-01-14 06:24:50] User: operator1 | Action: LOGOUT
+[2026-01-14 06:24:59] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:25:02] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:25:06] User: security_admin1 | Action: DECRYPT_SUCCESS | Document ID: 6 | Details: Hash check: OK
+[2026-01-14 06:25:06] User: security_admin1 | Action: VIEW | Document ID: 6
+[2026-01-14 06:25:18] User: security_admin1 | Action: SIGN | Document ID: 6 | Details: Hash verified: 01130C0C...
+[2026-01-14 06:25:30] User: security_admin1 | Action: SIGN_FAILED | Document ID: 2 | Details: Integrity check failed: hash mismatch
+[2026-01-14 06:25:38] User: security_admin1 | Action: APPROVE | Document ID: 6 | Details: Integrity: OK, Signature: OK
+[2026-01-14 06:25:43] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:25:48] User: security_admin1 | Action: DECRYPT_SUCCESS | Document ID: 6 | Details: Hash check: OK
+[2026-01-14 06:25:48] User: security_admin1 | Action: VIEW | Document ID: 6
