@@ -3,22 +3,22 @@
     {
       "username": "operator1",
       "role": "operator",
-      "privateKey": "6328a4463bf5f7286a12a8c217c9e6c5"
+      "privateKey": "0f712a492926bc535d45f210a8dc1b2f"
     },
     {
       "username": "manager1",
       "role": "manager",
-      "privateKey": "7600c042f36f385a017ae637113970ad"
+      "privateKey": "251e9feed8c056a1684bb8e0ad7f88d2"
     },
     {
       "username": "chief1",
       "role": "chief",
-      "privateKey": "d92b72e66b374e9dd7a09e58bc8a1fc5"
+      "privateKey": "61d7d4e7f398a3502ea6fd17e30e5990"
     },
     {
       "username": "security_admin1",
       "role": "security_admin",
-      "privateKey": "9d167953ea416d149e45b7675d8caf17"
+      "privateKey": "b8c217a2986fd07ac82649cdc81b8f98"
     }
   ]
 }

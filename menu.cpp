@@ -30,28 +30,58 @@ void Menu::initializeUsers() {
 
 void Menu::loadUsers() {
     std::ifstream file("users.json");
-    if (file.is_open()) {
-        // Простой парсинг JSON (упрощенный)
-        // Для прототипа - если файл существует, загружаем ключи
-        std::string line;
-        std::string jsonContent;
-        while (std::getline(file, line)) {
-            jsonContent += line;
-        }
-        file.close();
+    if (!file.is_open()) {
+        return; // Файл не существует, используем сгенерированные ключи
+    }
+    
+    // Читаем весь файл
+    std::string line;
+    std::string jsonContent;
+    while (std::getline(file, line)) {
+        jsonContent += line + "\n";
+    }
+    file.close();
+    
+    // Для каждого пользователя ищем его ключ в JSON
+    for (auto& user : users) {
+        std::string username = user.getUsername();
         
-        // Простой поиск ключей по имени пользователя
-        for (auto& user : users) {
-            std::string searchStr = "\"" + user.getUsername() + "\"";
-            size_t pos = jsonContent.find(searchStr);
-            if (pos != std::string::npos) {
-                // Ищем privateKey после имени пользователя
-                size_t keyPos = jsonContent.find("\"privateKey\"", pos);
-                if (keyPos != std::string::npos) {
-                    size_t valueStart = jsonContent.find("\"", keyPos + 13) + 1;
-                    size_t valueEnd = jsonContent.find("\"", valueStart);
-                    if (valueEnd != std::string::npos) {
-                        std::string key = jsonContent.substr(valueStart, valueEnd - valueStart);
+        // Ищем строку с именем пользователя
+        std::string searchPattern = "\"username\": \"" + username + "\"";
+        size_t usernamePos = jsonContent.find(searchPattern);
+        
+        if (usernamePos == std::string::npos) {
+            // Пробуем без пробела после двоеточия
+            searchPattern = "\"username\":\"" + username + "\"";
+            usernamePos = jsonContent.find(searchPattern);
+        }
+        
+        if (usernamePos != std::string::npos) {
+            // Находим начало объекта пользователя (открывающая скобка перед username)
+            size_t objStart = jsonContent.rfind("{", usernamePos);
+            if (objStart != std::string::npos) {
+                // Находим конец объекта пользователя (закрывающая скобка после username)
+                // Считаем баланс скобок, чтобы найти правильную закрывающую
+                size_t pos = objStart + 1;
+                int braceCount = 1;
+                size_t objEnd = std::string::npos;
+                while (pos < jsonContent.length() && braceCount > 0) {
+                    if (jsonContent[pos] == '{') braceCount++;
+                    else if (jsonContent[pos] == '}') {
+                        braceCount--;
+                        if (braceCount == 0) {
+                            objEnd = pos;
+                            break;
+                        }
+                    }
+                    pos++;
+                }
+                
+                if (objEnd != std::string::npos) {
+                    std::string userJson = jsonContent.substr(objStart, objEnd - objStart + 1);
+                    std::string keyStr = extractJsonValue(userJson, "privateKey");
+                    if (!keyStr.empty()) {
+                        std::string key = unescapeJsonString(keyStr);
                         user.setPrivateKey(key);
                     }
                 }
@@ -84,25 +114,78 @@ void Menu::loadDocuments() {
         return;
     }
     
-    // Простой парсинг JSON
+    // Читаем весь файл
     std::string line;
     std::string jsonContent;
     while (std::getline(file, line)) {
-        jsonContent += line;
+        jsonContent += line + "\n";
     }
     file.close();
     
-    // Упрощенный парсинг (для прототипа)
-    // В реальном проекте использовали бы nlohmann/json
+    // Находим массив documents
     size_t pos = jsonContent.find("\"documents\"");
     if (pos == std::string::npos) return;
     
-    // Находим документы
-    size_t start = jsonContent.find("[", pos);
-    if (start == std::string::npos) return;
+    size_t arrayStart = jsonContent.find("[", pos);
+    if (arrayStart == std::string::npos) return;
     
-    // Простой парсинг каждого документа
-    // Для прототипа - упрощенная версия
+    // Парсим каждый документ
+    size_t docPos = arrayStart + 1;
+    int maxId = 0;
+    
+    while (true) {
+        // Ищем начало объекта документа
+        size_t objStart = jsonContent.find("{", docPos);
+        if (objStart == std::string::npos) break;
+        
+        size_t objEnd = jsonContent.find("}", objStart);
+        if (objEnd == std::string::npos) break;
+        
+        // Извлекаем содержимое объекта
+        std::string docJson = jsonContent.substr(objStart, objEnd - objStart + 1);
+        
+        // Извлекаем поля
+        std::string idStr = extractJsonValue(docJson, "id");
+        std::string typeStr = extractJsonValue(docJson, "type");
+        std::string contentStr = extractJsonValue(docJson, "content");
+        std::string creatorStr = extractJsonValue(docJson, "creator");
+        std::string statusStr = extractJsonValue(docJson, "status");
+        std::string hashStr = extractJsonValue(docJson, "hash");
+        std::string signatureStr = extractJsonValue(docJson, "signature");
+        std::string timestampStr = extractJsonValue(docJson, "timestamp");
+        
+        if (!idStr.empty()) {
+            int id = std::stoi(idStr);
+            if (id > maxId) maxId = id;
+            
+            DocumentType type = Document::stringToType(typeStr);
+            DocumentStatus status = Document::stringToStatus(statusStr);
+            std::time_t timestamp = timestampStr.empty() ? std::time(nullptr) : std::stoll(timestampStr);
+            
+            // Создаем документ
+            Document doc(id, type, "", creatorStr);
+            doc.setContent(unescapeJsonString(contentStr));
+            doc.setStatus(status);
+            doc.setHash(unescapeJsonString(hashStr));
+            doc.setSignature(unescapeJsonString(signatureStr));
+            doc.setTimestamp(timestamp);
+            
+            documents.push_back(doc);
+        }
+        
+        // Переходим к следующему объекту
+        docPos = objEnd + 1;
+        
+        // Пропускаем запятую и пробелы
+        size_t nextObj = jsonContent.find("{", docPos);
+        if (nextObj == std::string::npos) break;
+        docPos = nextObj;
+    }
+    
+    // Обновляем nextDocumentId (чтобы новые документы получали правильные ID)
+    if (maxId > 0) {
+        nextDocumentId = maxId + 1;
+    }
 }
 
 void Menu::saveDocuments() {
@@ -117,8 +200,8 @@ void Menu::saveDocuments() {
             file << "      \"content\": \"" << escapeJsonString(doc.getContent()) << "\",\n";
             file << "      \"creator\": \"" << doc.getCreator() << "\",\n";
             file << "      \"status\": \"" << Document::statusToString(doc.getStatus()) << "\",\n";
-            file << "      \"hash\": \"" << doc.getHash() << "\",\n";
-            file << "      \"signature\": \"" << doc.getSignature() << "\",\n";
+            file << "      \"hash\": \"" << escapeJsonString(doc.getHash()) << "\",\n";
+            file << "      \"signature\": \"" << escapeJsonString(doc.getSignature()) << "\",\n";
             file << "      \"timestamp\": " << doc.getTimestamp() << "\n";
             file << "    }";
             if (i < documents.size() - 1) file << ",";
@@ -217,6 +300,82 @@ std::string Menu::escapeJsonString(const std::string& str) {
         }
     }
     return result;
+}
+
+std::string Menu::unescapeJsonString(const std::string& str) {
+    std::string result;
+    for (size_t i = 0; i < str.length(); ++i) {
+        if (str[i] == '\\' && i + 1 < str.length()) {
+            switch (str[i + 1]) {
+                case '"': result += '"'; i++; break;
+                case '\\': result += '\\'; i++; break;
+                case 'b': result += '\b'; i++; break;
+                case 'f': result += '\f'; i++; break;
+                case 'n': result += '\n'; i++; break;
+                case 'r': result += '\r'; i++; break;
+                case 't': result += '\t'; i++; break;
+                default: result += str[i]; break;
+            }
+        } else {
+            result += str[i];
+        }
+    }
+    return result;
+}
+
+std::string Menu::extractJsonValue(const std::string& json, const std::string& key) {
+    std::string searchKey = "\"" + key + "\"";
+    size_t keyPos = json.find(searchKey);
+    if (keyPos == std::string::npos) {
+        return "";
+    }
+    
+    // Находим двоеточие после ключа
+    size_t colonPos = json.find(":", keyPos);
+    if (colonPos == std::string::npos) {
+        return "";
+    }
+    
+    // Пропускаем пробелы после двоеточия
+    size_t valueStart = colonPos + 1;
+    while (valueStart < json.length() && (json[valueStart] == ' ' || json[valueStart] == '\t' || json[valueStart] == '\n')) {
+        valueStart++;
+    }
+    
+    if (valueStart >= json.length()) {
+        return "";
+    }
+    
+    // Если значение в кавычках (строка)
+    if (json[valueStart] == '"') {
+        valueStart++; // Пропускаем открывающую кавычку
+        size_t valueEnd = valueStart;
+        // Ищем закрывающую кавычку, учитывая экранирование
+        while (valueEnd < json.length()) {
+            if (json[valueEnd] == '"' && (valueEnd == valueStart || json[valueEnd - 1] != '\\')) {
+                break;
+            }
+            valueEnd++;
+        }
+        if (valueEnd < json.length()) {
+            return json.substr(valueStart, valueEnd - valueStart);
+        }
+    } else {
+        // Если значение без кавычек (число или другое)
+        size_t valueEnd = valueStart;
+        while (valueEnd < json.length() && json[valueEnd] != ',' && json[valueEnd] != '}' && 
+               json[valueEnd] != ' ' && json[valueEnd] != '\t' && json[valueEnd] != '\n') {
+            valueEnd++;
+        }
+        std::string value = json.substr(valueStart, valueEnd - valueStart);
+        // Удаляем пробелы в конце
+        while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\n')) {
+            value.pop_back();
+        }
+        return value;
+    }
+    
+    return "";
 }
 
 DocumentType Menu::selectDocumentType() {
@@ -330,11 +489,16 @@ void Menu::signDocument(int id) {
         return;
     }
     
-    // Расшифровываем для подписания
-    std::string decrypted = CryptoModule::decrypt(doc->getContent(), currentUser->getPrivateKey());
+    // Расшифровываем для подписания (используем ключ создателя документа)
+    User* creator = findUser(doc->getCreator());
+    if (!creator) {
+        std::cout << "Ошибка: Создатель документа не найден.\n";
+        return;
+    }
+    std::string decrypted = CryptoModule::decrypt(doc->getContent(), creator->getPrivateKey());
     
-    // Создаем подпись
-    std::string signature = CryptoModule::createSignature(decrypted, currentUser->getPrivateKey());
+    // Создаем подпись ключом создателя (для прототипа - создатель подписывает свой документ)
+    std::string signature = CryptoModule::createSignature(decrypted, creator->getPrivateKey());
     doc->setSignature(signature);
     doc->setStatus(DocumentStatus::SIGNED);
     
