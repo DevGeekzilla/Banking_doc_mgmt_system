@@ -7,6 +7,8 @@
 #include <limits>
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
+#include <cstring>
 
 Menu::Menu() : currentUser(nullptr), nextDocumentId(1) {
     initializeUsers();
@@ -20,196 +22,219 @@ Menu::~Menu() {
 }
 
 void Menu::initializeUsers() {
-    // Хардкод пользователей
+    // Хардкод пользователей с фиксированными ключами
     users.clear();
-    users.push_back(User("operator1", "pass123", UserRole::OPERATOR));
-    users.push_back(User("manager1", "pass123", UserRole::MANAGER));
-    users.push_back(User("chief1", "pass123", UserRole::CHIEF));
-    users.push_back(User("security_admin1", "pass123", UserRole::SECURITY_ADMIN));
+    
+    User op("operator1", "pass123", UserRole::OPERATOR);
+    op.setPrivateKey("a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"); // Фиксированный ключ 32 символа
+    users.push_back(op);
+    
+    User mgr("manager1", "pass123", UserRole::MANAGER);
+    mgr.setPrivateKey("b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7"); // Фиксированный ключ
+    users.push_back(mgr);
+    
+    User chf("chief1", "pass123", UserRole::CHIEF);
+    chf.setPrivateKey("c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8"); // Фиксированный ключ
+    users.push_back(chf);
+    
+    User sec("security_admin1", "pass123", UserRole::SECURITY_ADMIN);
+    sec.setPrivateKey("d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9"); // Фиксированный ключ
+    users.push_back(sec);
 }
 
 void Menu::loadUsers() {
-    std::ifstream file("users.json");
+    std::ifstream file("users.bin", std::ios::binary);
     if (!file.is_open()) {
-        return; // Файл не существует, используем сгенерированные ключи
+        return; // Файл не существует, используем фиксированные ключи
     }
     
-    // Читаем весь файл
-    std::string line;
-    std::string jsonContent;
-    while (std::getline(file, line)) {
-        jsonContent += line + "\n";
-    }
-    file.close();
+    // Читаем количество пользователей
+    size_t count;
+    file.read(reinterpret_cast<char*>(&count), sizeof(count));
     
-    // Для каждого пользователя ищем его ключ в JSON
-    for (auto& user : users) {
-        std::string username = user.getUsername();
+    // Читаем каждого пользователя
+    for (size_t i = 0; i < count && i < users.size(); ++i) {
+        // Читаем username
+        size_t usernameLen;
+        file.read(reinterpret_cast<char*>(&usernameLen), sizeof(usernameLen));
+        std::string username(usernameLen, '\0');
+        file.read(&username[0], usernameLen);
         
-        // Ищем строку с именем пользователя
-        std::string searchPattern = "\"username\": \"" + username + "\"";
-        size_t usernamePos = jsonContent.find(searchPattern);
+        // Читаем privateKey
+        size_t keyLen;
+        file.read(reinterpret_cast<char*>(&keyLen), sizeof(keyLen));
+        std::string key(keyLen, '\0');
+        file.read(&key[0], keyLen);
         
-        if (usernamePos == std::string::npos) {
-            // Пробуем без пробела после двоеточия
-            searchPattern = "\"username\":\"" + username + "\"";
-            usernamePos = jsonContent.find(searchPattern);
-        }
-        
-        if (usernamePos != std::string::npos) {
-            // Находим начало объекта пользователя (открывающая скобка перед username)
-            size_t objStart = jsonContent.rfind("{", usernamePos);
-            if (objStart != std::string::npos) {
-                // Находим конец объекта пользователя (закрывающая скобка после username)
-                // Считаем баланс скобок, чтобы найти правильную закрывающую
-                size_t pos = objStart + 1;
-                int braceCount = 1;
-                size_t objEnd = std::string::npos;
-                while (pos < jsonContent.length() && braceCount > 0) {
-                    if (jsonContent[pos] == '{') braceCount++;
-                    else if (jsonContent[pos] == '}') {
-                        braceCount--;
-                        if (braceCount == 0) {
-                            objEnd = pos;
-                            break;
-                        }
-                    }
-                    pos++;
-                }
-                
-                if (objEnd != std::string::npos) {
-                    std::string userJson = jsonContent.substr(objStart, objEnd - objStart + 1);
-                    std::string keyStr = extractJsonValue(userJson, "privateKey");
-                    if (!keyStr.empty()) {
-                        std::string key = unescapeJsonString(keyStr);
-                        user.setPrivateKey(key);
-                    }
-                }
+        // Находим пользователя и устанавливаем ключ
+        for (auto& user : users) {
+            if (user.getUsername() == username) {
+                user.setPrivateKey(key);
+                break;
             }
         }
     }
+    
+    file.close();
 }
 
 void Menu::saveUsers() {
-    std::ofstream file("users.json");
-    if (file.is_open()) {
-        file << "{\n  \"users\": [\n";
-        for (size_t i = 0; i < users.size(); ++i) {
-            file << "    {\n";
-            file << "      \"username\": \"" << users[i].getUsername() << "\",\n";
-            file << "      \"role\": \"" << User::roleToString(users[i].getRole()) << "\",\n";
-            file << "      \"privateKey\": \"" << escapeJsonString(users[i].getPrivateKey()) << "\"\n";
-            file << "    }";
-            if (i < users.size() - 1) file << ",";
-            file << "\n";
-        }
-        file << "  ]\n}";
-        file.close();
-    }
-}
-
-void Menu::loadDocuments() {
-    std::ifstream file("documents.json");
+    std::ofstream file("users.bin", std::ios::binary);
     if (!file.is_open()) {
         return;
     }
     
-    // Читаем весь файл
-    std::string line;
-    std::string jsonContent;
-    while (std::getline(file, line)) {
-        jsonContent += line + "\n";
+    // Записываем количество пользователей
+    size_t count = users.size();
+    file.write(reinterpret_cast<const char*>(&count), sizeof(count));
+    
+    // Записываем каждого пользователя
+    for (const auto& user : users) {
+        // Записываем username
+        std::string username = user.getUsername();
+        size_t usernameLen = username.length();
+        file.write(reinterpret_cast<const char*>(&usernameLen), sizeof(usernameLen));
+        file.write(username.c_str(), usernameLen);
+        
+        // Записываем privateKey
+        std::string key = user.getPrivateKey();
+        size_t keyLen = key.length();
+        file.write(reinterpret_cast<const char*>(&keyLen), sizeof(keyLen));
+        file.write(key.c_str(), keyLen);
     }
+    
     file.close();
+}
+
+void Menu::loadDocuments() {
+    std::ifstream file("documents.bin", std::ios::binary);
+    if (!file.is_open()) {
+        return;
+    }
     
-    // Находим массив documents
-    size_t pos = jsonContent.find("\"documents\"");
-    if (pos == std::string::npos) return;
+    // Читаем количество документов
+    size_t count;
+    file.read(reinterpret_cast<char*>(&count), sizeof(count));
     
-    size_t arrayStart = jsonContent.find("[", pos);
-    if (arrayStart == std::string::npos) return;
-    
-    // Парсим каждый документ
-    size_t docPos = arrayStart + 1;
     int maxId = 0;
     
-    while (true) {
-        // Ищем начало объекта документа
-        size_t objStart = jsonContent.find("{", docPos);
-        if (objStart == std::string::npos) break;
+    // Читаем каждый документ
+    for (size_t i = 0; i < count; ++i) {
+        // Читаем id
+        int id;
+        file.read(reinterpret_cast<char*>(&id), sizeof(id));
+        if (id > maxId) maxId = id;
         
-        size_t objEnd = jsonContent.find("}", objStart);
-        if (objEnd == std::string::npos) break;
+        // Читаем type
+        int typeInt;
+        file.read(reinterpret_cast<char*>(&typeInt), sizeof(typeInt));
+        DocumentType type = static_cast<DocumentType>(typeInt);
         
-        // Извлекаем содержимое объекта
-        std::string docJson = jsonContent.substr(objStart, objEnd - objStart + 1);
+        // Читаем content
+        size_t contentLen;
+        file.read(reinterpret_cast<char*>(&contentLen), sizeof(contentLen));
+        std::string content(contentLen, '\0');
+        file.read(&content[0], contentLen);
         
-        // Извлекаем поля
-        std::string idStr = extractJsonValue(docJson, "id");
-        std::string typeStr = extractJsonValue(docJson, "type");
-        std::string contentStr = extractJsonValue(docJson, "content");
-        std::string creatorStr = extractJsonValue(docJson, "creator");
-        std::string statusStr = extractJsonValue(docJson, "status");
-        std::string hashStr = extractJsonValue(docJson, "hash");
-        std::string signatureStr = extractJsonValue(docJson, "signature");
-        std::string timestampStr = extractJsonValue(docJson, "timestamp");
+        // Читаем creator
+        size_t creatorLen;
+        file.read(reinterpret_cast<char*>(&creatorLen), sizeof(creatorLen));
+        std::string creator(creatorLen, '\0');
+        file.read(&creator[0], creatorLen);
         
-        if (!idStr.empty()) {
-            int id = std::stoi(idStr);
-            if (id > maxId) maxId = id;
-            
-            DocumentType type = Document::stringToType(typeStr);
-            DocumentStatus status = Document::stringToStatus(statusStr);
-            std::time_t timestamp = timestampStr.empty() ? std::time(nullptr) : std::stoll(timestampStr);
-            
-            // Создаем документ
-            Document doc(id, type, "", creatorStr);
-            doc.setContent(unescapeJsonString(contentStr));
-            doc.setStatus(status);
-            doc.setHash(unescapeJsonString(hashStr));
-            doc.setSignature(unescapeJsonString(signatureStr));
-            doc.setTimestamp(timestamp);
-            
-            documents.push_back(doc);
-        }
+        // Читаем status
+        int statusInt;
+        file.read(reinterpret_cast<char*>(&statusInt), sizeof(statusInt));
+        DocumentStatus status = static_cast<DocumentStatus>(statusInt);
         
-        // Переходим к следующему объекту
-        docPos = objEnd + 1;
+        // Читаем hash
+        size_t hashLen;
+        file.read(reinterpret_cast<char*>(&hashLen), sizeof(hashLen));
+        std::string hash(hashLen, '\0');
+        file.read(&hash[0], hashLen);
         
-        // Пропускаем запятую и пробелы
-        size_t nextObj = jsonContent.find("{", docPos);
-        if (nextObj == std::string::npos) break;
-        docPos = nextObj;
+        // Читаем signature
+        size_t signatureLen;
+        file.read(reinterpret_cast<char*>(&signatureLen), sizeof(signatureLen));
+        std::string signature(signatureLen, '\0');
+        file.read(&signature[0], signatureLen);
+        
+        // Читаем timestamp
+        std::time_t timestamp;
+        file.read(reinterpret_cast<char*>(&timestamp), sizeof(timestamp));
+        
+        // Создаем документ
+        Document doc(id, type, content, creator);
+        doc.setStatus(status);
+        doc.setHash(hash);
+        doc.setSignature(signature);
+        doc.setTimestamp(timestamp);
+        
+        documents.push_back(doc);
     }
     
-    // Обновляем nextDocumentId (чтобы новые документы получали правильные ID)
+    file.close();
+    
+    // Обновляем nextDocumentId
     if (maxId > 0) {
         nextDocumentId = maxId + 1;
     }
 }
 
 void Menu::saveDocuments() {
-    std::ofstream file("documents.json");
-    if (file.is_open()) {
-        file << "{\n  \"documents\": [\n";
-        for (size_t i = 0; i < documents.size(); ++i) {
-            const Document& doc = documents[i];
-            file << "    {\n";
-            file << "      \"id\": " << doc.getId() << ",\n";
-            file << "      \"type\": \"" << Document::typeToString(doc.getType()) << "\",\n";
-            file << "      \"content\": \"" << escapeJsonString(doc.getContent()) << "\",\n";
-            file << "      \"creator\": \"" << doc.getCreator() << "\",\n";
-            file << "      \"status\": \"" << Document::statusToString(doc.getStatus()) << "\",\n";
-            file << "      \"hash\": \"" << escapeJsonString(doc.getHash()) << "\",\n";
-            file << "      \"signature\": \"" << escapeJsonString(doc.getSignature()) << "\",\n";
-            file << "      \"timestamp\": " << doc.getTimestamp() << "\n";
-            file << "    }";
-            if (i < documents.size() - 1) file << ",";
-            file << "\n";
-        }
-        file << "  ]\n}";
-        file.close();
+    std::ofstream file("documents.bin", std::ios::binary);
+    if (!file.is_open()) {
+        return;
     }
+    
+    // Записываем количество документов
+    size_t count = documents.size();
+    file.write(reinterpret_cast<const char*>(&count), sizeof(count));
+    
+    // Записываем каждый документ
+    for (const auto& doc : documents) {
+        // Записываем id
+        int id = doc.getId();
+        file.write(reinterpret_cast<const char*>(&id), sizeof(id));
+        
+        // Записываем type
+        int typeInt = static_cast<int>(doc.getType());
+        file.write(reinterpret_cast<const char*>(&typeInt), sizeof(typeInt));
+        
+        // Записываем content
+        std::string content = doc.getContent();
+        size_t contentLen = content.length();
+        file.write(reinterpret_cast<const char*>(&contentLen), sizeof(contentLen));
+        file.write(content.c_str(), contentLen);
+        
+        // Записываем creator
+        std::string creator = doc.getCreator();
+        size_t creatorLen = creator.length();
+        file.write(reinterpret_cast<const char*>(&creatorLen), sizeof(creatorLen));
+        file.write(creator.c_str(), creatorLen);
+        
+        // Записываем status
+        int statusInt = static_cast<int>(doc.getStatus());
+        file.write(reinterpret_cast<const char*>(&statusInt), sizeof(statusInt));
+        
+        // Записываем hash
+        std::string hash = doc.getHash();
+        size_t hashLen = hash.length();
+        file.write(reinterpret_cast<const char*>(&hashLen), sizeof(hashLen));
+        file.write(hash.c_str(), hashLen);
+        
+        // Записываем signature
+        std::string signature = doc.getSignature();
+        size_t signatureLen = signature.length();
+        file.write(reinterpret_cast<const char*>(&signatureLen), sizeof(signatureLen));
+        file.write(signature.c_str(), signatureLen);
+        
+        // Записываем timestamp
+        std::time_t timestamp = doc.getTimestamp();
+        file.write(reinterpret_cast<const char*>(&timestamp), sizeof(timestamp));
+    }
+    
+    file.close();
 }
 
 User* Menu::authenticate() {
@@ -274,108 +299,6 @@ User* Menu::findUser(const std::string& username) {
         }
     }
     return nullptr;
-}
-
-std::string Menu::escapeJsonString(const std::string& str) {
-    std::string result;
-    for (char c : str) {
-        switch (c) {
-            case '"': result += "\\\""; break;
-            case '\\': result += "\\\\"; break;
-            case '\b': result += "\\b"; break;
-            case '\f': result += "\\f"; break;
-            case '\n': result += "\\n"; break;
-            case '\r': result += "\\r"; break;
-            case '\t': result += "\\t"; break;
-            default:
-                if (c < 0x20) {
-                    // Экранируем управляющие символы
-                    char buf[7];
-                    sprintf(buf, "\\u%04x", (unsigned char)c);
-                    result += buf;
-                } else {
-                    result += c;
-                }
-                break;
-        }
-    }
-    return result;
-}
-
-std::string Menu::unescapeJsonString(const std::string& str) {
-    std::string result;
-    for (size_t i = 0; i < str.length(); ++i) {
-        if (str[i] == '\\' && i + 1 < str.length()) {
-            switch (str[i + 1]) {
-                case '"': result += '"'; i++; break;
-                case '\\': result += '\\'; i++; break;
-                case 'b': result += '\b'; i++; break;
-                case 'f': result += '\f'; i++; break;
-                case 'n': result += '\n'; i++; break;
-                case 'r': result += '\r'; i++; break;
-                case 't': result += '\t'; i++; break;
-                default: result += str[i]; break;
-            }
-        } else {
-            result += str[i];
-        }
-    }
-    return result;
-}
-
-std::string Menu::extractJsonValue(const std::string& json, const std::string& key) {
-    std::string searchKey = "\"" + key + "\"";
-    size_t keyPos = json.find(searchKey);
-    if (keyPos == std::string::npos) {
-        return "";
-    }
-    
-    // Находим двоеточие после ключа
-    size_t colonPos = json.find(":", keyPos);
-    if (colonPos == std::string::npos) {
-        return "";
-    }
-    
-    // Пропускаем пробелы после двоеточия
-    size_t valueStart = colonPos + 1;
-    while (valueStart < json.length() && (json[valueStart] == ' ' || json[valueStart] == '\t' || json[valueStart] == '\n')) {
-        valueStart++;
-    }
-    
-    if (valueStart >= json.length()) {
-        return "";
-    }
-    
-    // Если значение в кавычках (строка)
-    if (json[valueStart] == '"') {
-        valueStart++; // Пропускаем открывающую кавычку
-        size_t valueEnd = valueStart;
-        // Ищем закрывающую кавычку, учитывая экранирование
-        while (valueEnd < json.length()) {
-            if (json[valueEnd] == '"' && (valueEnd == valueStart || json[valueEnd - 1] != '\\')) {
-                break;
-            }
-            valueEnd++;
-        }
-        if (valueEnd < json.length()) {
-            return json.substr(valueStart, valueEnd - valueStart);
-        }
-    } else {
-        // Если значение без кавычек (число или другое)
-        size_t valueEnd = valueStart;
-        while (valueEnd < json.length() && json[valueEnd] != ',' && json[valueEnd] != '}' && 
-               json[valueEnd] != ' ' && json[valueEnd] != '\t' && json[valueEnd] != '\n') {
-            valueEnd++;
-        }
-        std::string value = json.substr(valueStart, valueEnd - valueStart);
-        // Удаляем пробелы в конце
-        while (!value.empty() && (value.back() == ' ' || value.back() == '\t' || value.back() == '\n')) {
-            value.pop_back();
-        }
-        return value;
-    }
-    
-    return "";
 }
 
 DocumentType Menu::selectDocumentType() {

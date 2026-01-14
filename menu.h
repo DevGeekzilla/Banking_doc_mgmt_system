@@ -47,9 +47,6 @@ private:
     bool hasPermission(const std::string& action);
     Document* findDocument(int id);
     User* findUser(const std::string& username);
-    std::string escapeJsonString(const std::string& str);
-    std::string unescapeJsonString(const std::string& str);
-    std::string extractJsonValue(const std::string& json, const std::string& key);
     
 public:
     Menu();

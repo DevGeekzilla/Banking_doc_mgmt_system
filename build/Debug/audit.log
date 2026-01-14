@@ -142,3 +142,18 @@
 [2026-01-14 03:14:26] User: operator1 | Action: LOGIN | Details: Successful login
 [2026-01-14 03:14:28] User: operator1 | Action: VIEW_DOCUMENTS_LIST
 [2026-01-14 03:14:32] User: operator1 | Action: VIEW | Document ID: 7
+[2026-01-14 05:32:21] User: operator1 | Action: LOGIN | Details: Successful login
+[2026-01-14 05:32:34] User: operator1 | Action: CREATE | Document ID: 1 | Details: credit_application
+[2026-01-14 05:32:38] User: operator1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 05:32:41] User: operator1 | Action: VIEW | Document ID: 1
+[2026-01-14 05:32:46] User: operator1 | Action: LOGOUT
+[2026-01-14 05:32:58] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 05:33:00] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 05:33:04] User: security_admin1 | Action: VIEW | Document ID: 1
+[2026-01-14 05:33:10] User: security_admin1 | Action: SIGN | Document ID: 1
+[2026-01-14 05:33:12] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 05:33:18] User: security_admin1 | Action: VIEW | Document ID: 1
+[2026-01-14 05:33:27] User: security_admin1 | Action: APPROVE | Document ID: 1
+[2026-01-14 05:33:39] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 05:33:44] User: security_admin1 | Action: VIEW | Document ID: 1
+[2026-01-14 05:34:56] User: security_admin1 | Action: VIEW_AUDIT_LOG
