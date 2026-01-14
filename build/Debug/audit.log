@@ -206,3 +206,23 @@
 [2026-01-14 06:25:43] User: security_admin1 | Action: VIEW_DOCUMENTS_LIST
 [2026-01-14 06:25:48] User: security_admin1 | Action: DECRYPT_SUCCESS | Document ID: 6 | Details: Hash check: OK
 [2026-01-14 06:25:48] User: security_admin1 | Action: VIEW | Document ID: 6
+[2026-01-14 06:45:08] User: chief1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:45:11] User: chief1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:45:17] User: chief1 | Action: DECRYPT_SUCCESS | Document ID: 1 | Details: Hash check: FAILED
+[2026-01-14 06:45:17] User: chief1 | Action: VIEW | Document ID: 1
+[2026-01-14 06:45:25] User: chief1 | Action: DECRYPT_SUCCESS | Document ID: 6 | Details: Hash check: OK
+[2026-01-14 06:45:25] User: chief1 | Action: VIEW | Document ID: 6
+[2026-01-14 06:45:33] User: chief1 | Action: REJECT | Document ID: 1 | Details: Previous status: approved
+[2026-01-14 06:45:39] User: chief1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:45:44] User: chief1 | Action: REJECT | Document ID: 2 | Details: Previous status: draft
+[2026-01-14 06:45:50] User: chief1 | Action: DECRYPT_SUCCESS | Document ID: 3 | Details: Hash check: FAILED
+[2026-01-14 06:45:50] User: chief1 | Action: VIEW | Document ID: 3
+[2026-01-14 06:45:54] User: chief1 | Action: REJECT | Document ID: 3 | Details: Previous status: draft
+[2026-01-14 06:45:57] User: chief1 | Action: DECRYPT_SUCCESS | Document ID: 4 | Details: Hash check: OK
+[2026-01-14 06:45:57] User: chief1 | Action: VIEW | Document ID: 4
+[2026-01-14 06:46:04] User: chief1 | Action: REJECT | Document ID: 4 | Details: Previous status: draft
+[2026-01-14 06:46:05] User: chief1 | Action: VIEW_DOCUMENTS_LIST
+[2026-01-14 06:46:14] User: chief1 | Action: LOGOUT
+[2026-01-14 06:46:24] User: security_admin1 | Action: LOGIN | Details: Successful login
+[2026-01-14 06:46:28] User: security_admin1 | Action: VIEW_AUDIT_LOG
+[2026-01-14 06:46:56] User: security_admin1 | Action: LOGOUT
